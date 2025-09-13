@@ -1,0 +1,93 @@
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient definitions for different faces -->
+    <linearGradient id="topGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff00ff;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#da70d6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#8a2be2;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#6a0dad;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4b0082;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="leftGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9932cc;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#7b68ee;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#6a0dad;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2d1b69;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="rightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e6e6fa;stop-opacity:1" />
+      <stop offset="20%" style="stop-color:#da70d6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ba55d3;stop-opacity:1" />
+      <stop offset="80%" style="stop-color:#9370db;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#663399;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Neon glow effect -->
+    <filter id="neon" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Edge glow -->
+    <filter id="edgeGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1.5 0 1.5 0 0  0 0.5 1.5 0 0  1.5 0 1.5 0 0  0 0 0 1 0"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Centered isometric cube -->
+  <g transform="translate(200,200)">
+    
+    <!-- Top face -->
+    <polygon points="-80,-100 0,-140 80,-100 0,-60" 
+             fill="url(#topGrad)" 
+             stroke="#ff00ff" 
+             stroke-width="4" 
+             filter="url(#neon)"/>
+    
+    <!-- Left face -->
+    <polygon points="-80,-100 -80,0 0,40 0,-60" 
+             fill="url(#leftGrad)" 
+             stroke="#8a2be2" 
+             stroke-width="4"/>
+    
+    <!-- Right face -->
+    <polygon points="0,-60 0,40 80,0 80,-100" 
+             fill="url(#rightGrad)" 
+             stroke="#da70d6" 
+             stroke-width="4" 
+             filter="url(#neon)"/>
+    
+    <!-- Enhanced edge highlights -->
+    <g stroke-width="3" fill="none" filter="url(#edgeGlow)" opacity="0.8">
+      <line x1="-80" y1="-100" x2="0" y2="-140" stroke="#ff00ff"/>
+      <line x1="0" y1="-140" x2="80" y2="-100" stroke="#ff00ff"/>
+      <line x1="80" y1="-100" x2="80" y2="0" stroke="#da70d6"/>
+      <line x1="0" y1="40" x2="80" y2="0" stroke="#da70d6"/>
+      <line x1="-80" y1="0" x2="0" y2="40" stroke="#8a2be2"/>
+      <line x1="-80" y1="-100" x2="-80" y2="0" stroke="#9932cc"/>
+      <line x1="0" y1="-60" x2="0" y2="40" stroke="#ba55d3"/>
+    </g>
+    
+    <!-- Inner highlight lines for extra dimension -->
+    <g stroke-width="2" fill="none" opacity="0.6">
+      <line x1="-40" y1="-80" x2="0" y2="-100" stroke="#ff69b4"/>
+      <line x1="0" y1="-100" x2="40" y2="-80" stroke="#ff69b4"/>
+      <line x1="40" y1="-80" x2="40" y2="-20" stroke="#dda0dd"/>
+      <line x1="0" y1="20" x2="40" y2="-20" stroke="#dda0dd"/>
+      <line x1="-40" y1="-20" x2="0" y2="20" stroke="#9370db"/>
+      <line x1="-40" y1="-80" x2="-40" y2="-20" stroke="#8b008b"/>
+    </g>
+    
+  </g>
+  
+</svg>
