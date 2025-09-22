@@ -194,17 +194,14 @@ export default function MintCredentialModal({
 
     try {
       const token = getStoredToken();
-      const res = await fetch(
-        "https://erired-harshitg7062-82spdej3.leapcell.dev/api/uploadtoipfs",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(credentialData),
-        }
-      );
+      const res = await fetch("http://localhost:8080/api/uploadtoipfs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(credentialData),
+      });
       const result = await res.json();
       console.log("Upload result:", result);
       if (!res.ok)
@@ -266,17 +263,14 @@ export default function MintCredentialModal({
       // Post transaction hash to backend
       try {
         const token = getStoredToken();
-        await fetch(
-          "https://erired-harshitg7062-82spdej3.leapcell.dev/transactionhash",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify({ transaction_hash: tx.hash }),
-          }
-        );
+        await fetch("http://localhost:8080/transactionhash", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ transaction_hash: tx.hash }),
+        });
       } catch (hashPersistErr) {
         console.warn("Failed to persist transaction hash:", hashPersistErr);
       }
@@ -304,17 +298,14 @@ export default function MintCredentialModal({
         };
 
         const token = getStoredToken();
-        await fetch(
-          "https://erired-harshitg7062-82spdej3.leapcell.dev/credmint",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify(payload),
-          }
-        );
+        await fetch("http://localhost:8080/credmint", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        });
       } catch (persistErr) {
         console.warn("Failed to persist minted record to backend:", persistErr);
       }

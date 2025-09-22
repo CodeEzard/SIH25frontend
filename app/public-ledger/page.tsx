@@ -46,9 +46,7 @@ export default function PublicLedgerPage() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(
-          "https://erired-harshitg7062-82spdej3.leapcell.dev/transactions"
-        );
+        const res = await fetch("http://localhost:8080/transactions");
         if (!res.ok) throw new Error(`Failed (${res.status})`);
         const data = await res.json();
         const rows: any[] = Array.isArray(data) ? data : data?.rows || [];

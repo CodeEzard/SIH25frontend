@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,8 +26,12 @@ import {
   ChevronDown,
   ChevronUp,
   Wallet,
+  Share2,
+  Clock,
+  X as XIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { QRCodeCanvas } from "qrcode.react";
 import { getStoredToken, isJwtValid } from "@/components/auth/jwt";
 
 interface BackendCred {
@@ -71,6 +75,13 @@ export default function MintedCredentialsSummary({
   const [additionalOpen, setAdditionalOpen] = useState(false);
 
   const [copied, setCopied] = useState<string | null>(null);
+
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareFor, setShareFor] = useState<BackendCred | null>(null);
+  const qrWrapRef = useRef<HTMLDivElement | null>(null);
 
   // Helper to read values from IPFS JSON attributes array (trait_type/value)
   const getAttr = useCallback(
@@ -173,10 +184,7 @@ export default function MintedCredentialsSummary({
       if (token && isJwtValid(token))
         headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch(
-        "https://erired-harshitg7062-82spdej3.leapcell.dev/api/creds",
-        { headers }
-      );
+      const res = await fetch("http://localhost:8080/api/creds", { headers });
 
       if (res.status === 404) {
         setCreds([]);
@@ -331,6 +339,171 @@ export default function MintedCredentialsSummary({
     setAdditionalOpen(false);
   };
 
+  const openShare = (c: BackendCred) => {
+    setShareFor(c);
+    setShareUrl(null);
+    setShareError(null);
+    setShareLoading(false);
+    setShareOpen(true);
+  };
+  const closeShare = () => {
+    setShareOpen(false);
+    setShareFor(null);
+    setShareUrl(null);
+    setShareError(null);
+    setShareLoading(false);
+  };
+
+  const generateShare = async (hours: number) => {
+    if (!shareFor) return;
+    try {
+      setShareLoading(true);
+      setShareError(null);
+      const token = getStoredToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      const res = await fetch(
+        "http://localhost:8080/api/v1/credentials/generate-share-link",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ credential_id: shareFor.id, duration: hours }),
+        }
+      );
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(t || `Failed (${res.status})`);
+      }
+      const json = await res.json();
+      const url = json?.shareable_url || json?.url || json?.link || null;
+      if (!url) throw new Error("No URL returned by server");
+      setShareUrl(url);
+    } catch (e: any) {
+      setShareError(e?.message || "Failed to generate share link");
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const summarizeShareUrl = (u: string) => {
+    try {
+      const url = new URL(u);
+      const hasToken = url.searchParams.has("token");
+      if (hasToken) url.search = "?token=•••";
+      return `${url.origin}${url.pathname}${url.search}`;
+    } catch {
+      return u.length > 48 ? `${u.slice(0, 48)}…` : u;
+    }
+  };
+
+  const getQrCanvas = (): HTMLCanvasElement | null => {
+    return (qrWrapRef.current?.querySelector("canvas") ||
+      null) as HTMLCanvasElement | null;
+  };
+
+  const loadImage = (src: string) =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+
+  const buildBrandedCanvas = async (qr: HTMLCanvasElement) => {
+    const padding = 24;
+    const headerH = 72;
+    const width = qr.width + padding * 2;
+    const height = headerH + qr.height + padding * 2;
+    const out = document.createElement("canvas");
+    out.width = width;
+    out.height = height;
+    const ctx = out.getContext("2d");
+    if (!ctx) return out;
+    // background
+    ctx.fillStyle = "#0b0b0b";
+    ctx.fillRect(0, 0, width, height);
+    // header brand
+    try {
+      const logo = await loadImage("/favicon.svg");
+      const logoSize = 28;
+      ctx.drawImage(
+        logo,
+        padding,
+        Math.floor((headerH - logoSize) / 2),
+        logoSize,
+        logoSize
+      );
+    } catch {}
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "600 20px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.fillText("VeriCred", padding + 36, Math.floor(headerH / 2));
+    // divider
+    ctx.fillStyle = "#1f2937"; // gray-800
+    ctx.fillRect(padding, headerH - 1, width - padding * 2, 1);
+    // QR
+    ctx.drawImage(qr, padding, headerH + padding);
+    return out;
+  };
+
+  const downloadBrandedQR = async () => {
+    const qr = getQrCanvas();
+    if (!qr) return;
+    const out = await buildBrandedCanvas(qr);
+    const url = out.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(shareFor?.degree_name || "credential")
+      .toString()
+      .replace(/\s+/g, "-")
+      .toLowerCase()}-qrcode.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const nativeShareBrandedQR = async () => {
+    const qr = getQrCanvas();
+    if (!qr) return;
+    const out = await buildBrandedCanvas(qr);
+    return new Promise<void>((resolve) => {
+      out.toBlob(async (blob) => {
+        if (!blob) return resolve();
+        const file = new File([blob], "vericred-credential-qr.png", {
+          type: "image/png",
+        });
+        if (
+          (navigator as any).canShare &&
+          (navigator as any).canShare({ files: [file] })
+        ) {
+          try {
+            await (navigator as any).share({
+              files: [file],
+              title: "VeriCred QR",
+              text: "Scan to verify credential",
+            });
+          } catch {
+            // ignore cancel
+          }
+        } else {
+          // fallback to download
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "vericred-credential-qr.png";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }
+        resolve();
+      }, "image/png");
+    });
+  };
+
   return (
     <Card className="bg-gradient-to-br from-gray-900/80 to-gray-900/60 border border-gray-800/50">
       <CardHeader>
@@ -454,10 +627,21 @@ export default function MintedCredentialsSummary({
                           )}
                         </span>
                       </div>
-                      <div className="whitespace-nowrap">
-                        {c.issued_date
-                          ? new Date(c.issued_date).toLocaleDateString()
-                          : ""}
+                      <div className="flex items-center gap-2">
+                        <div className="whitespace-nowrap">
+                          {c.issued_date
+                            ? new Date(c.issued_date).toLocaleDateString()
+                            : ""}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-gray-700 text-gray-200 hover:bg-white/5 h-8 px-3"
+                          onClick={() => openShare(c)}
+                        >
+                          <Share2 className="h-4 w-4" />
+                          <span className="sr-only">Share</span>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -859,6 +1043,126 @@ export default function MintedCredentialsSummary({
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Share Modal */}
+        {shareOpen && shareFor && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm z-40"
+              onClick={closeShare}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative z-50 w-full max-w-md"
+            >
+              <div className="bg-gradient-to-br from-gray-950 to-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+                  <div>
+                    <div className="text-white font-semibold">
+                      Share Credential
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {shareFor.degree_name || "Credential"}
+                    </div>
+                  </div>
+                  <button
+                    onClick={closeShare}
+                    className="text-gray-400 hover:text-white p-1 rounded-md"
+                  >
+                    <XIcon className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div className="text-sm text-gray-300">Select expiration</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      className="bg-white text-black hover:bg-gray-100"
+                      disabled={shareLoading}
+                      onClick={() => generateShare(1)}
+                    >
+                      1 Hour
+                    </Button>
+                    <Button
+                      className="bg-white text-black hover:bg-gray-100"
+                      disabled={shareLoading}
+                      onClick={() => generateShare(24)}
+                    >
+                      24 Hours
+                    </Button>
+                    <Button
+                      className="bg-white text-black hover:bg-gray-100"
+                      disabled={shareLoading}
+                      onClick={() => generateShare(7 * 24)}
+                    >
+                      7 Days
+                    </Button>
+                  </div>
+                  {shareError && (
+                    <div className="text-xs text-red-300 bg-red-900/20 border border-red-800 rounded px-3 py-2">
+                      {shareError}
+                    </div>
+                  )}
+                  <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 flex items-center justify-center min-h-44">
+                    {shareLoading ? (
+                      <div className="text-gray-400 text-sm">
+                        Generating link…
+                      </div>
+                    ) : shareUrl ? (
+                      <div
+                        className="flex flex-col items-center gap-3"
+                        ref={qrWrapRef}
+                      >
+                        <QRCodeCanvas
+                          value={shareUrl}
+                          size={208}
+                          bgColor="#0b0b0b"
+                          fgColor="#ffffff"
+                          includeMargin={false}
+                        />
+                        <div className="text-[11px] text-gray-400 truncate max-w-[220px]">
+                          {summarizeShareUrl(shareUrl)}
+                        </div>
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-white text-black hover:bg-gray-100"
+                            onClick={() =>
+                              navigator.clipboard.writeText(shareUrl!)
+                            }
+                          >
+                            Copy URL
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-gray-700 text-gray-200 hover:bg-white/5"
+                            onClick={downloadBrandedQR}
+                          >
+                            Download PNG
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-gray-700 text-gray-200 hover:bg-white/5"
+                            onClick={nativeShareBrandedQR}
+                          >
+                            Share Image
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-gray-500 text-sm flex items-center gap-2">
+                        <Clock className="h-4 w-4" /> Choose an expiration to
+                        generate
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </motion.div>

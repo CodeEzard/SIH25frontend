@@ -1,4 +1,4 @@
-<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
   <defs>
     <!-- Gradient definitions for different faces -->
     <linearGradient id="topGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -44,8 +44,8 @@
     </filter>
   </defs>
   
-  <!-- Centered isometric cube -->
-  <g transform="translate(200,200)">
+  <!-- Centered isometric cube (scaled up for larger appearance in tab) -->
+  <g transform="translate(200,268) scale(1.35)">
     
     <!-- Top face -->
     <polygon points="-80,-100 0,-140 80,-100 0,-60" 

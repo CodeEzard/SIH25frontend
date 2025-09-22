@@ -59,7 +59,7 @@ export default function WalletStatus({
       <div className="hidden sm:flex items-center gap-2 whitespace-nowrap">
         <Wallet className="h-4 w-4 text-green-400" />
         <span className="text-sm text-gray-300 whitespace-nowrap">
-          Connected:{" "}
+          {" "}
           <span className="font-mono text-white">
             {formatAddress(userProfile.walletAddress)}
           </span>

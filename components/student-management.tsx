@@ -83,14 +83,11 @@ export default function StudentManagement({
       setFetchError(null);
       try {
         const token = getStoredToken();
-        const res = await fetch(
-          "https://erired-harshitg7062-82spdej3.leapcell.dev/students",
-          {
-            headers: {
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-          }
-        );
+        const res = await fetch("http://localhost:8080/students", {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
 
         if (!res.ok)
           throw new Error(`Failed to fetch students (${res.status})`);

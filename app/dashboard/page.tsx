@@ -81,14 +81,11 @@ export default function StudentDashboard() {
 
         const token = getStoredToken();
         if (isJwtValid(token)) {
-          const res = await fetch(
-            "https://erired-harshitg7062-82spdej3.leapcell.dev/students",
-            {
-              headers: {
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-            }
-          );
+          const res = await fetch("http://localhost:8080/students", {
+            headers: {
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          });
 
           if (res.status === 404) {
             setNotFound(true);
@@ -219,8 +216,7 @@ export default function StudentDashboard() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         };
 
-        const url =
-          "https://erired-harshitg7062-82spdej3.leapcell.dev/dashboard";
+        const url = "http://localhost:8080/dashboard";
 
         const res = await fetch(url, {
           method: "GET",

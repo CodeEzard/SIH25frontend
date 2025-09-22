@@ -93,14 +93,11 @@ export default function LandingPublicLedgerPage() {
       const address = await signer.getAddress();
 
       // Step 1 — get nonce (backend)
-      const nonceRes = await fetch(
-        "https://erired-harshitg7062-82spdej3.leapcell.dev/getnonce",
-        {
-          method: "POST",
-          body: JSON.stringify({ metamask_address: address }),
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      const nonceRes = await fetch("http://localhost:8080/getnonce", {
+        method: "POST",
+        body: JSON.stringify({ metamask_address: address }),
+        headers: { "Content-Type": "application/json" },
+      });
       if (!nonceRes.ok) throw new Error("Failed to get nonce");
       const { nonce } = await nonceRes.json();
 
@@ -108,14 +105,11 @@ export default function LandingPublicLedgerPage() {
       const signature = await signer.signMessage(nonce);
 
       // Step 3 — login with signature (backend)
-      const loginRes = await fetch(
-        "https://erired-harshitg7062-82spdej3.leapcell.dev/auth/metamasklogin",
-        {
-          method: "POST",
-          body: JSON.stringify({ metamask_address: address, signature }),
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      const loginRes = await fetch("http://localhost:8080/auth/metamasklogin", {
+        method: "POST",
+        body: JSON.stringify({ metamask_address: address, signature }),
+        headers: { "Content-Type": "application/json" },
+      });
       if (!loginRes.ok) throw new Error("Login failed");
       const token = await loginRes.text();
 
@@ -167,9 +161,7 @@ export default function LandingPublicLedgerPage() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(
-          "https://erired-harshitg7062-82spdej3.leapcell.dev/transactions"
-        );
+        const res = await fetch("http://localhost:8080/transactions");
         if (!res.ok) throw new Error(`Failed (${res.status})`);
         const data = await res.json();
         const rows: any[] = Array.isArray(data) ? data : data?.rows || [];

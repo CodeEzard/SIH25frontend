@@ -83,14 +83,11 @@ export default function UserInfoModal({
         };
 
         // 1) Fetch user profile
-        const res = await fetch(
-          "https://erired-harshitg7062-82spdej3.leapcell.dev/showuser",
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ metamask_address: addr }),
-          }
-        );
+        const res = await fetch("http://localhost:8080/showuser", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ metamask_address: addr }),
+        });
         if (!res.ok) throw new Error(`showuser failed (${res.status})`);
         const userJson: any = await res.json();
         const user: ShowUserResponse = Array.isArray(userJson)
@@ -99,14 +96,11 @@ export default function UserInfoModal({
         setProfile(user || null);
 
         // 2) Fetch user credentials
-        const cr = await fetch(
-          "https://erired-harshitg7062-82spdej3.leapcell.dev/usercreds",
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ metamask_address: addr }),
-          }
-        );
+        const cr = await fetch("http://localhost:8080/usercreds", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ metamask_address: addr }),
+        });
         if (!cr.ok) throw new Error(`usercreds failed (${cr.status})`);
         const cj: any = await cr.json();
         const list: UserCred[] = Array.isArray(cj)

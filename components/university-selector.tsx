@@ -151,14 +151,11 @@ export default function UniversitySelector({
       setError(null);
       try {
         const token = getStoredToken();
-        const res = await fetch(
-          "https://erired-harshitg7062-82spdej3.leapcell.dev/universities",
-          {
-            headers: {
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-          }
-        );
+        const res = await fetch("http://localhost:8080/universities", {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
 
         if (!res.ok) {
           throw new Error(`Failed to fetch (${res.status})`);
@@ -206,16 +203,13 @@ export default function UniversitySelector({
       const payload = { metamask_address: walletAddress.trim() };
 
       // Use POST with JSON body (browsers do not allow GET bodies)
-      const res = await fetch(
-        "https://erired-harshitg7062-82spdej3.leapcell.dev/api/specific-university",
-        {
-          method: "POST",
-          mode: "cors",
-          cache: "no-store",
-          headers,
-          body: JSON.stringify(payload),
-        }
-      );
+      const res = await fetch("http://localhost:8080/api/specific-university", {
+        method: "POST",
+        mode: "cors",
+        cache: "no-store",
+        headers,
+        body: JSON.stringify(payload),
+      });
 
       if (res.ok) {
         const text = await res.text();
@@ -256,17 +250,14 @@ export default function UniversitySelector({
         alert("Missing wallet information");
         return;
       }
-      const r = await fetch(
-        "https://erired-harshitg7062-82spdej3.leapcell.dev/api/pending/request",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ student_wallet, university_wallet }),
-        }
-      );
+      const r = await fetch("http://localhost:8080/api/pending/request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ student_wallet, university_wallet }),
+      });
       if (!r.ok) throw new Error(`Request failed (${r.status})`);
 
       showToast({

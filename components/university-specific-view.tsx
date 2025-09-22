@@ -98,17 +98,14 @@ export default function UniversitySpecificView({
         alert("Missing wallet information");
         return;
       }
-      const res = await fetch(
-        "https://erired-harshitg7062-82spdej3.leapcell.dev/api/pending/request",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ student_wallet, university_wallet }),
-        }
-      );
+      const res = await fetch("http://localhost:8080/api/pending/request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ student_wallet, university_wallet }),
+      });
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
       showToast({

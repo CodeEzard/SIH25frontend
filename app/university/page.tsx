@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Copy,
   Check,
+  Upload,
 } from "lucide-react";
 import UniversityProfile from "@/components/university-profile";
 import StudentManagement from "@/components/student-management";
@@ -32,6 +33,7 @@ import Logo from "@/components/ui/logo";
 import { getStoredToken } from "@/components/auth/jwt";
 import { useToast } from "@/components/ui/toast";
 import { VerificationSignupModal } from "@/components/home/verification-hub";
+import BulkUpload from "@/components/bulk-upload";
 
 // Mock data types
 interface University {
@@ -160,8 +162,7 @@ export default function UniversityDashboard() {
         // fall back to stored signup data (vericred_user) or mock data.
         if (token) {
           // Returning user - fetch data from API
-          const fetchUrl =
-            "https://erired-harshitg7062-82spdej3.leapcell.dev/university";
+          const fetchUrl = "http://localhost:8080/university";
           console.log(
             "Fetching university from",
             fetchUrl,
@@ -441,15 +442,12 @@ export default function UniversityDashboard() {
       console.log("[Pending] GET /api/pending/for-org", {
         tokenPresent: !!token,
       });
-      const res = await fetch(
-        "https://erired-harshitg7062-82spdej3.leapcell.dev/api/pending/for-org",
-        {
-          method: "GET",
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
-      );
+      const res = await fetch("http://localhost:8080/api/pending/for-org", {
+        method: "GET",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
       const text = await res.text();
       if (!res.ok) throw new Error(`Failed (${res.status}): ${text}`);
       const data = text ? JSON.parse(text) : [];
@@ -563,17 +561,14 @@ export default function UniversityDashboard() {
   async function markApproved(student_wallet: string) {
     try {
       const token = getStoredToken();
-      const res = await fetch(
-        "https://erired-harshitg7062-82spdej3.leapcell.dev/api/pending/approve",
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ student_wallet }),
-        }
-      );
+      const res = await fetch("http://localhost:8080/api/pending/approve", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ student_wallet }),
+      });
       if (!res.ok) throw new Error(`Approve failed (${res.status})`);
       setPendingRequests((prev) =>
         prev.filter((p) => p.student_wallet !== student_wallet)
@@ -714,7 +709,7 @@ export default function UniversityDashboard() {
               className="space-y-6"
             >
               {/* Navigation Tabs */}
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 gap-1 bg-gray-900/80 border border-gray-800 backdrop-blur-sm p-1">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1 bg-gray-900/80 border border-gray-800 backdrop-blur-sm p-1">
                 <TabsTrigger
                   value="dashboard"
                   className="flex items-center justify-center gap-2 text-xs sm:text-sm data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-300 data-[state=active]:border-purple-700 text-gray-400 transition-all duration-200 hover:text-white px-2 py-2"
@@ -741,6 +736,14 @@ export default function UniversityDashboard() {
                       {pendingRequests.length}
                     </span>
                   )}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="bulk-upload"
+                  className="flex items-center justify-center gap-2 text-xs sm:text-sm data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-300 data-[state=active]:border-purple-700 text-gray-400 transition-all duration-200 hover:text-white px-2 py-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span className="inline sm:hidden">Bulk</span>
+                  <span className="hidden sm:inline">Bulk Upload</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -907,6 +910,11 @@ export default function UniversityDashboard() {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* Bulk Upload */}
+              <TabsContent value="bulk-upload" className="space-y-4">
+                <BulkUpload />
               </TabsContent>
             </Tabs>
           )}

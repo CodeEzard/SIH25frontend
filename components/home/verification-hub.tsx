@@ -62,7 +62,7 @@ export function VerificationSignupModal({
         "0xc0a70a43CD5fAF5B15db983fe9f9E769B221738e"; // updated contract
 
       const provider = new BrowserProvider((window as any).ethereum as any);
-      // Ensure account access
+      // Ensure account accessd
       await (window as any).ethereum.request({ method: "eth_requestAccounts" });
       const signer = await provider.getSigner();
 
@@ -84,17 +84,14 @@ export function VerificationSignupModal({
       // Optional: Persist tx hash to backend (best-effort)
       try {
         const token = getStoredToken();
-        await fetch(
-          "https://erired-harshitg7062-82spdej3.leapcell.dev/transactionhash",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify({ transaction_hash: tx.hash }),
-          }
-        );
+        await fetch("http://localhost:8080/transactionhash", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ transaction_hash: tx.hash }),
+        });
       } catch (e) {
         console.warn("Failed to persist tx hash:", e);
       }
@@ -194,8 +191,8 @@ export function VerificationSignupModal({
 
       const res = await fetch(
         mode === "university"
-          ? "https://erired-harshitg7062-82spdej3.leapcell.dev/api/create/org"
-          : "https://erired-harshitg7062-82spdej3.leapcell.dev/api/create/user",
+          ? "http://localhost:8080/api/create/org"
+          : "http://localhost:8080/api/create/user",
         {
           method: "POST",
           headers: {
