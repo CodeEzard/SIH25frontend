@@ -20,7 +20,7 @@ export default function SiteNavbar() {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/university", label: "Issuer Hub" },
     { href: "/public-ledger", label: "Public Ledger" },
-    { href: "/verify", label: "Verify Certificate" }, // Added link
+    { href: "/verify-certificate", label: "Verify Certificate" }, // Point to public verification page
   ];
 
   const [userProfile, setUserProfile] = useState<{

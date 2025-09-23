@@ -7,8 +7,10 @@ import React, {
   useMemo,
   useRef,
   useState,
+  useEffect,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import { CheckCircle, Info, AlertCircle, ExternalLink } from "lucide-react";
 
 export type ToastVariant = "success" | "error" | "info";
@@ -42,6 +44,8 @@ export default function ToastProvider({
 }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const timeouts = useRef<Record<string, any>>({});
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const showToast = useCallback(
     ({
@@ -107,58 +111,63 @@ export default function ToastProvider({
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {/* Viewport */}
-      <div className="pointer-events-none fixed top-6 right-6 z-[60] w-full max-w-sm space-y-3">
-        <AnimatePresence>
-          {items.map((t) => (
-            <motion.div
-              key={t.id}
-              initial={{ opacity: 0, y: 20, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.25 }}
-              className={`pointer-events-auto rounded-2xl border ${borderClass(
-                t.variant
-              )} shadow-2xl backdrop-blur-xl p-4 sm:p-5`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="shrink-0 w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-                  {iconFor(t.variant)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-white font-semibold text-base">
-                    {t.title}
-                  </h4>
-                  {t.description && (
-                    <p className="text-sm text-gray-300 mt-1">
-                      {t.description}
-                    </p>
-                  )}
-                  {t.linkHref && (
-                    <div className="mt-3">
-                      <a
-                        href={t.linkHref}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition"
+      {/* Viewport via portal to avoid invalid nesting */}
+      {mounted && typeof document !== "undefined"
+        ? createPortal(
+            <div className="pointer-events-none fixed top-6 right-6 z-[60] w-full max-w-sm space-y-3">
+              <AnimatePresence>
+                {items.map((t) => (
+                  <motion.div
+                    key={t.id}
+                    initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    transition={{ duration: 0.25 }}
+                    className={`pointer-events-auto rounded-2xl border ${borderClass(
+                      t.variant
+                    )} shadow-2xl backdrop-blur-xl p-4 sm:p-5`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="shrink-0 w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                        {iconFor(t.variant)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-white font-semibold text-base">
+                          {t.title}
+                        </h4>
+                        {t.description && (
+                          <p className="text-sm text-gray-300 mt-1">
+                            {t.description}
+                          </p>
+                        )}
+                        {t.linkHref && (
+                          <div className="mt-3">
+                            <a
+                              href={t.linkHref}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition"
+                            >
+                              {t.linkLabel || "Open Link"}
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => remove(t.id)}
+                        className="-m-1 p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition"
                       >
-                        {t.linkLabel || "Open Link"}
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
+                        ×
+                      </button>
                     </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => remove(t.id)}
-                  className="-m-1 p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition"
-                >
-                  ×
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>,
+            document.body
+          )
+        : null}
     </ToastContext.Provider>
   );
 }

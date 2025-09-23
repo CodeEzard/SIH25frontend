@@ -25,7 +25,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html
+      lang="en"
+      className="dark"
+      suppressHydrationWarning
+      style={{ colorScheme: "dark" }}
+    >
       <head>
         <style>{`
 html {
@@ -40,6 +45,7 @@ html {
           attribute="class"
           defaultTheme="dark"
           enableSystem={false}
+          enableColorScheme={false}
           disableTransitionOnChange
         >
           <ToastProvider>

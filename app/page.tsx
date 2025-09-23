@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Wallet,
@@ -13,6 +13,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { ethers } from "ethers";
+// import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import DocsSection from "@/components/landing/docs-section";
 import ExploreSection from "@/components/landing/explore-section";
@@ -27,10 +28,19 @@ import Logo from "@/components/ui/logo";
 import LogoReveal from "@/components/ui/logo-reveal";
 
 export default function LandingPage() {
+  // const {
+  //   login: privyLogin,
+  //   user,
+  //   getAccessToken,
+  //   authenticated,
+  //   ready,
+  // } = usePrivy?.() ?? ({} as any);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isPrivyLoading, setIsPrivyLoading] = useState(false);
   const [showReveal, setShowReveal] = useState(false);
   const router = useRouter();
+  // const privyProcessing = useRef(false);
 
   // Redirect to /home if a valid JWT exists
   // Disabled to allow viewing public landing pages (e.g., /landing-ledger) even when logged in
@@ -47,8 +57,7 @@ export default function LandingPage() {
       { label: "Docs", href: "#docs" },
       { label: "Explore", href: "#explore" },
       { label: "Public Ledger", href: "/landing-ledger" },
-      { label: "Support", href: "#support" },
-      { label: "Verify Certificate", href: "/verify" }, // new link
+      { label: "Verify Certificate", href: "/verify-certificate" },
     ],
     []
   );
@@ -82,7 +91,11 @@ export default function LandingPage() {
       }
 
       const provider = new ethers.BrowserProvider((window as any).ethereum);
-      await provider.send("eth_requestAccounts", []);
+      // Avoid duplicate requests if already connected
+      const existing = (await provider.send("eth_accounts", [])) as string[];
+      if (!existing || existing.length === 0) {
+        await provider.send("eth_requestAccounts", []);
+      }
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
 
@@ -137,6 +150,65 @@ export default function LandingPage() {
     }
   }
 
+  async function handlePrivyLogin() {
+    // Temporarily disabled
+    alert("Login is temporarily disabled.");
+    // try {
+    //   if (typeof privyLogin !== "function") {
+    //     alert(
+    //       "Login is unavailable. Check NEXT_PUBLIC_PRIVY_APP_ID and reload."
+    //     );
+    //     return;
+    //   }
+    //   setIsPrivyLoading(true);
+    //   await privyLogin();
+    // } catch (e: any) {
+    //   console.error("Privy login error", e);
+    //   alert(e?.message || "Login failed");
+    // } finally {
+    //   setIsPrivyLoading(false);
+    // }
+  }
+
+  // Process Privy session once user is authenticated (works for magic link and OAuth redirects)
+  // useEffect(() => {
+  //   const run = async () => {
+  //     if (!ready || !authenticated || privyProcessing.current) return;
+  //     privyProcessing.current = true;
+  //     try {
+  //       const token = (await getAccessToken?.()) as string | undefined;
+  //       const embeddedAddr = (user as any)?.embeddedWallet?.address;
+  //       if (token && embeddedAddr) {
+  //         const resp = await fetch(
+  //           "http://localhost:8080/api/v1/auth/privy-login",
+  //           {
+  //             method: "POST",
+  //             headers: { "Content-Type": "application/json" },
+  //             body: JSON.stringify({
+  //               privy_token: token,
+  //               wallet_address: embeddedAddr,
+  //             }),
+  //           }
+  //         );
+  //         if (!resp.ok) throw new Error("Privy login failed");
+  //         const { jwt } = await resp.json();
+  //         saveWalletSession({
+  //           address: embeddedAddr,
+  //           isConnected: true,
+  //           token: jwt,
+  //         });
+  //         router.replace("/home");
+  //       }
+  //     } catch (err) {
+  //       console.error("Privy post-auth processing failed", err);
+  //     } finally {
+  //       // allow future attempts if needed
+  //       privyProcessing.current = false;
+  //     }
+  //   };
+  //   run();
+  // }, [ready, authenticated, getAccessToken, router, user]);
+
   return (
     <div className="min-h-screen bg-black text-white scroll-smooth">
       {showReveal && <LogoReveal onComplete={() => setShowReveal(false)} />}
@@ -145,7 +217,7 @@ export default function LandingPage() {
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
           {/* Glass, rounded pill container */}
           <div className="w-full rounded-full border border-white/10 bg-white/5 backdrop-blur-md shadow-[0_0_1px_1px_rgba(255,255,255,0.05)] px-3 md:px-4 py-2">
-            <div className="flex justify-between items-center gap-3">
+            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
               {/* Logo */}
               <a href="#home" className="group flex items-center">
                 <Logo
@@ -154,24 +226,36 @@ export default function LandingPage() {
                 />
               </a>
 
-              {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center gap-1">
+              {/* Desktop Navigation: centered links (middle column) */}
+              <div className="hidden md:flex items-center justify-center gap-0">
                 {navItems.map((item) => (
                   <a
                     key={item.href}
                     href={item.href}
-                    className="px-4 py-2 text-sm text-gray-300 hover:text-white rounded-full hover:bg-white/10 transition-all"
+                    className="px-3 py-2 text-sm text-gray-300 hover:text-white rounded-full hover:bg-white/10 transition-all"
                   >
                     {item.label}
                   </a>
                 ))}
+              </div>
+
+              {/* Desktop CTAs: right column */}
+              <div className="hidden md:flex items-center gap-2">
+                <Button
+                  onClick={handlePrivyLogin}
+                  disabled={isPrivyLoading}
+                  className="bg-white text-black hover:bg-gray-100 shadow-sm"
+                >
+                  {isPrivyLoading ? "Opening..." : "Login / Sign Up"}
+                </Button>
                 <Button
                   onClick={handleMetaMaskConnect}
                   disabled={isConnecting}
-                  className="ml-2 bg-gradient-to-r from-white to-gray-200 text-black hover:from-gray-100 hover:to-white shadow-sm"
+                  variant="outline"
+                  className="border-gray-700 text-gray-200 hover:bgWHITE/5"
                 >
                   <Wallet className="mr-2 h-4 w-4" />
-                  {isConnecting ? "Connecting..." : "Login with MetaMask"}
+                  {isConnecting ? "Connecting..." : "MetaMask"}
                 </Button>
               </div>
 
@@ -208,14 +292,24 @@ export default function LandingPage() {
                   {item.label}
                 </a>
               ))}
-              <Button
-                onClick={handleMetaMaskConnect}
-                disabled={isConnecting}
-                className="w-full h-12 bg-gradient-to-r from-white to-gray-200 text-black hover:from-gray-100 hover:to-white shadow-sm"
-              >
-                <Wallet className="mr-3 h-5 w-5" />
-                {isConnecting ? "Connecting..." : "Login with MetaMask"}
-              </Button>
+              <div className="grid grid-cols-1 gap-2">
+                <Button
+                  onClick={handlePrivyLogin}
+                  disabled={isPrivyLoading}
+                  className="w-full h-12 bg-white text-black hover:bg-gray-100"
+                >
+                  {isPrivyLoading ? "Opening..." : "Login / Sign Up"}
+                </Button>
+                <Button
+                  onClick={handleMetaMaskConnect}
+                  disabled={isConnecting}
+                  variant="outline"
+                  className="w-full h-12 border-gray-700 text-gray-200 hover:bg-white/5"
+                >
+                  <Wallet className="mr-3 h-5 w-5" />
+                  {isConnecting ? "Connecting..." : "MetaMask"}
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -282,14 +376,24 @@ export default function LandingPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.25 }}
               >
-                <Button
-                  onClick={handleMetaMaskConnect}
-                  disabled={isConnecting}
-                  className="h-12 px-6 bg-white text-black hover:bg-gray-100"
-                >
-                  <Wallet className="mr-2 h-5 w-5" />
-                  {isConnecting ? "Connecting..." : "Login with MetaMask"}
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  <Button
+                    onClick={handlePrivyLogin}
+                    disabled={isPrivyLoading}
+                    className="h-12 px-6 bg-white text-black hover:bg-gray-100"
+                  >
+                    {isPrivyLoading ? "Opening..." : "Login / Sign Up"}
+                  </Button>
+                  <Button
+                    onClick={handleMetaMaskConnect}
+                    disabled={isConnecting}
+                    variant="outline"
+                    className="h-12 px-6 border-gray-800 text-gray-200 hover:bg-gray-900"
+                  >
+                    <Wallet className="mr-2 h-5 w-5" />
+                    {isConnecting ? "Connecting..." : "MetaMask"}
+                  </Button>
+                </div>
                 <a
                   href="#explore"
                   className="inline-flex items-center justify-center h-12 px-6 rounded-md border border-gray-800 hover:bg-gray-900 transition-colors"
