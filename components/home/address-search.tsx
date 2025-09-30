@@ -129,7 +129,7 @@ export default function AddressSearch() {
     return isNaN(d.getTime()) ? s : d.toLocaleDateString();
   };
 
-  const SAMPLE_ADDR = "0x0894556908f344151c0BF6633423274b96D27B8A";
+  const SAMPLE_ADDR = "0x1A5b0307F532cd664f93D71786aa84b67964e635";
 
   return (
     <Card className="bg-gradient-to-br from-gray-900/85 to-gray-900/70 border border-gray-800/70 rounded-2xl shadow-[0_0_0_1px_rgba(255,255,255,0.05)]">

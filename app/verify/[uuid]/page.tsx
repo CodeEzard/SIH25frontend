@@ -94,6 +94,7 @@ export default function VerifyByUuidPage() {
   const [copied, setCopied] = useState<
     null | "link" | "issuer" | "recipient" | "credid"
   >(null);
+  const [ipfsFallbackUrls, setIpfsFallbackUrls] = useState<string[]>([]);
 
   // helpers
   const getAttr = useCallback(
@@ -110,33 +111,73 @@ export default function VerifyByUuidPage() {
     [ipfsData]
   );
 
-  const fetchIpfs = useCallback(async (rawIpfs: string) => {
+  const fetchIpfs = useCallback(async (rawIpfs: any) => {
     if (!rawIpfs) return;
-    const normalize = (link: string) => {
-      if (/^https?:\/\//.test(link)) return link;
-      if (link.startsWith("ipfs://")) return link.replace(/^ipfs:\/\//, "");
-      if (link.startsWith("/ipfs/")) return link.replace(/^\/ipfs\//, "");
-      return link;
-    };
-    const normalized = normalize(rawIpfs);
-    const gateways = [
-      (h: string) => `https://cloudflare-ipfs.com/ipfs/${h}`,
-      (h: string) => `https://ipfs.io/ipfs/${h}`,
-      (h: string) => `https://dweb.link/ipfs/${h}`,
-    ];
-    const tryUrls: string[] = [];
-    if (/^https?:\/\//.test(normalized)) {
-      tryUrls.push(normalized);
-    } else {
-      const [hash, ...rest] = normalized.split("/");
-      const path = rest.length ? `/${rest.join("/")}` : "";
-      for (const g of gateways) tryUrls.push(g(hash) + path);
-    }
 
+    // Reset and start loading
     setIpfsLoading(true);
     setIpfsError(null);
     setIpfsData(null);
     setIpfsResolvedUrl(null);
+
+    const normalize = (val: any) => {
+      let link = typeof val === "string" ? val : val == null ? "" : String(val);
+      link = link.trim();
+      if (!link) return "";
+      // ar:// support
+      if (/^ar:\/\//i.test(link))
+        return link.replace(/^ar:\/\//i, "https://arweave.net/");
+      // if already http(s)
+      if (/^https?:\/\//i.test(link)) return link;
+      // strip common IPFS prefixes
+      link = link.replace(/^ipfs:\/\//i, "");
+      link = link.replace(/^\/?ipfs\//i, "");
+      link = link.replace(/^ipfs\//i, "");
+      return link;
+    };
+
+    const normalized = normalize(rawIpfs);
+    if (!normalized) {
+      setIpfsLoading(false);
+      return;
+    }
+
+    // Try server proxy first to bypass CORS
+    try {
+      const proxyUrl = `/api/ipfs?src=${encodeURIComponent(normalized)}`;
+      const pr = await fetch(proxyUrl, { cache: "no-store" });
+      if (pr.ok) {
+        const payload = await pr.json();
+        if (payload?.ok) {
+          setIpfsData(payload.data);
+          setIpfsResolvedUrl(payload.resolvedUrl || null);
+          setIpfsError(null);
+          setIpfsLoading(false);
+          return;
+        }
+      }
+    } catch {}
+
+    // Fallback to public gateways (path form)
+    const tryUrls: string[] = [];
+    if (/^https?:\/\//i.test(normalized)) {
+      tryUrls.push(normalized);
+    } else {
+      const parts = normalized.split("/").filter(Boolean);
+      const cid = parts.shift() || "";
+      const path = parts.length ? `/${parts.join("/")}` : "";
+      const gateways = [
+        (h: string, p: string) => `https://cloudflare-ipfs.com/ipfs/${h}${p}`,
+        (h: string, p: string) => `https://ipfs.io/ipfs/${h}${p}`,
+        (h: string, p: string) => `https://nftstorage.link/ipfs/${h}${p}`,
+        (h: string, p: string) => `https://dweb.link/ipfs/${h}${p}`,
+        (h: string, p: string) => `https://gateway.pinata.cloud/ipfs/${h}${p}`,
+      ];
+      for (const g of gateways) tryUrls.push(g(cid, path));
+    }
+
+    setIpfsFallbackUrls(tryUrls);
+
     let success = false;
     for (const url of tryUrls) {
       try {
@@ -160,7 +201,7 @@ export default function VerifyByUuidPage() {
       } catch {}
     }
     if (!success)
-      setIpfsError("Failed to fetch IPFS content (CORS or gateway error).");
+      setIpfsError("Unable to load IPFS content from public gateways.");
     setIpfsLoading(false);
   }, []);
 
@@ -202,8 +243,15 @@ export default function VerifyByUuidPage() {
           (data as any)?.credential?.tokenURI ||
           (data as any)?.credential?.tokenUri ||
           null;
-        const trimmed = typeof ipfs === "string" ? ipfs.trim() : ipfs;
-        if (trimmed) fetchIpfs(trimmed as string);
+
+        // Robust extraction from nested structures
+        const ipfsCandidate =
+          extractIpfsLink(ipfs) ||
+          extractIpfsLink((data as any)?.credential) ||
+          extractIpfsLink(data);
+        const ipfsStr =
+          typeof ipfsCandidate === "string" ? ipfsCandidate.trim() : "";
+        if (ipfsStr) fetchIpfs(ipfsStr);
       } catch (e: any) {
         const st = e?.response?.status;
         if (st === 401 || st === 403)
@@ -223,6 +271,66 @@ export default function VerifyByUuidPage() {
     const dt = new Date(d);
     return isNaN(dt.getTime()) ? d : dt.toLocaleDateString();
   };
+
+  // Extract an IPFS-like link from unknown shapes
+  const extractIpfsLink = useCallback((val: any): string | null => {
+    const isStringCid = (s: string) =>
+      /^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[\w-]{20,})$/i.test(s);
+    const useIfString = (s: any): string | null => {
+      if (typeof s !== "string") return null;
+      const t = s.trim();
+      if (!t) return null;
+      return t;
+    };
+
+    if (!val && val !== 0) return null;
+    if (typeof val === "string") return val.trim();
+    if (Array.isArray(val)) {
+      for (const it of val) {
+        const got = extractIpfsLink(it);
+        if (got) return got;
+      }
+      return null;
+    }
+    if (typeof val === "object") {
+      // Common key candidates
+      const keys = [
+        "ipfs_link",
+        "ipfs",
+        "ip_fs_link",
+        "tokenURI",
+        "tokenUri",
+        "url",
+        "uri",
+        "href",
+        "link",
+        "src",
+        "path",
+        "image",
+        "animation_url",
+        "metadata_uri",
+        "gateway",
+        "cid",
+        "hash",
+        "/",
+      ];
+      for (const k of keys) {
+        if (k in val) {
+          const got = extractIpfsLink((val as any)[k]);
+          if (got) return got;
+        }
+      }
+      // Fallback: if object looks like a CID container
+      const possible = [val.cid, val.hash, val["/"]].filter(Boolean)[0];
+      if (
+        typeof possible === "string" &&
+        (isStringCid(possible) || possible.startsWith("ipfs://"))
+      ) {
+        return possible;
+      }
+    }
+    return null;
+  }, []);
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-black py-12 px-4 md:px-6 lg:px-8 flex flex-col items-center">
@@ -261,7 +369,28 @@ export default function VerifyByUuidPage() {
           </div>
         )}
         {ipfsError && (
-          <div className="mt-4 text-xs text-amber-300">{ipfsError}</div>
+          <div className="mt-4 text-xs text-amber-300">
+            {ipfsError}
+            {ipfsFallbackUrls.length > 0 && (
+              <div className="mt-2 text-[11px] text-gray-400">
+                Try opening one of these gateways directly:
+                <ul className="list-disc ml-5 mt-1 space-y-1">
+                  {ipfsFallbackUrls.slice(0, 4).map((u) => (
+                    <li key={u}>
+                      <a
+                        className="underline hover:text-gray-300"
+                        target="_blank"
+                        rel="noreferrer"
+                        href={u}
+                      >
+                        {u}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         )}
         {ipfsData && (
           <div className="mt-8 rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/70 to-black/60 p-6">

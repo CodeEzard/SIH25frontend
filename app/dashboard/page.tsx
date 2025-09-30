@@ -216,58 +216,76 @@ export default function StudentDashboard() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         };
 
-        const url = "http://localhost:8080/dashboard";
-
-        const res = await fetch(url, {
-          method: "GET",
+        // Single source of truth: GET /dashboard
+        setError(null);
+        setNotFound(false);
+        const res = await fetch("http://localhost:8080/dashboard", {
           headers,
+          cache: "no-store",
         });
 
         if (res.status === 404) {
           setNotFound(true);
-          setDashboardData(null);
           return;
         }
 
         const text = await res.text();
-        const json = text
+        const data = text
           ? (() => {
-              try {
-                return JSON.parse(text);
-              } catch {
-                return { raw: text };
-              }
+              try { return JSON.parse(text); } catch { return { raw: text }; }
             })()
           : {};
-        if (!res.ok) {
-          setDashboardError(`Dashboard fetch failed (${res.status})`);
-        }
-        const obj = Array.isArray(json) ? json[0] || {} : json || {};
-        const hasData = Boolean(
-          obj &&
-            Object.keys(obj).length > 0 &&
-            (obj.id || obj.first_name || obj.email || obj.student_id)
-        );
-        setDashboardData(json);
+        setDashboardData(data);
 
-        if (res.ok && hasData) {
-          setUserProfile((prev) => ({
-            role: prev?.role || "Individual",
-            first_name: obj.first_name || "",
-            last_name: obj.last_name || "",
-            email: obj.email || "",
-            student_id: obj.student_id || "",
-          }));
-        } else if (res.ok && !hasData) {
-          // 200 but no actual profile information
+        if (!res.ok) {
+          setError(`Profile fetch failed (${res.status})`);
           setNotFound(true);
+          return;
         }
+
+        const obj = extractProfile(data) || {};
+        // If the API returns any object, show it as the profile (placeholders for missing fields)
+        const hasAnyObject = obj && typeof obj === "object" && Object.keys(obj).length > 0;
+        if (hasAnyObject) {
+          setUserProfile(toUserProfile(obj));
+          setNotFound(false);
+          return;
+        }
+
+        // Fallback to CTA only if empty object
+        setNotFound(true);
       } catch (e: any) {
         setDashboardError(e?.message || "Failed to fetch dashboard");
         setDashboardData(null);
       }
     })();
   }, [walletAddress]);
+
+  // Helper to map backend profile variants to our UI model
+  const toUserProfile = (obj: any): UserProfile => ({
+    role: obj?.role || "Individual",
+    first_name: obj?.first_name ?? obj?.firstName ?? obj?.firstname ?? obj?.name ?? "",
+    last_name: obj?.last_name ?? obj?.lastName ?? obj?.lastname ?? obj?.surname ?? "",
+    email: obj?.email ?? obj?.studentEmail ?? obj?.mail ?? "",
+    student_id: obj?.student_id ?? obj?.studentId ?? obj?.studentID ?? obj?.roll_no ?? "",
+  });
+
+  const extractProfile = (data: any): any => {
+    const candidates = [
+      data,
+      Array.isArray(data) ? data[0] : undefined,
+      data?.data,
+      data?.result,
+      data?.student,
+      data?.profile,
+      data?.user,
+      data?.payload,
+    ].filter(Boolean);
+    for (const c of candidates) {
+      if (c && typeof c === "object" && Object.keys(c).length > 0) return c;
+    }
+    return null;
+  };
 
   if (profileLoading) {
     return (
